@@ -37,5 +37,11 @@ export const DEFAULT_AI_SETTINGS: AISettings = {
   spoilerProtection: true,
   maxContextChunks: 10,
   indexingMode: 'on-demand',
+  englishCoach: {
+    enabled: true,
+    nativeLanguage: 'zh-CN',
+    cefrLevel: 'B1',
+    defaultMode: 'quiet',
+  },
   reedy: { enabled: false },
 };

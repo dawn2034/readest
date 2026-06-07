@@ -91,3 +91,34 @@ export interface ScoredMemoryRow extends MemoryRow {
   /** Distance from queryEmbedding when vector search ran. null otherwise. */
   vectorDistance: number | null;
 }
+
+// ---------------------------------------------------------------------------
+// English learning items
+// ---------------------------------------------------------------------------
+
+export type LearningItemType = 'vocabulary' | 'phrase' | 'sentence';
+
+export interface LearningItemRow {
+  id: string;
+  bookHash: string;
+  type: LearningItemType;
+  sourceText: string;
+  sourceCfi: string | null;
+  chapterTitle: string | null;
+  explanation: string;
+  examples: string | null;
+  reviewState: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface LearningItemWriteArgs {
+  bookHash: string;
+  type: LearningItemType;
+  sourceText: string;
+  sourceCfi?: string | null;
+  chapterTitle?: string | null;
+  explanation: string;
+  examples?: string | null;
+  reviewState?: string;
+}

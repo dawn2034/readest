@@ -4,6 +4,9 @@ import type {
   ChunkRow,
   EmbeddingRow,
   IndexingStatus,
+  LearningItemRow,
+  LearningItemType,
+  LearningItemWriteArgs,
   MemoryRow,
   MemoryScope,
   MemorySearchArgs,
@@ -244,6 +247,7 @@ export class ReedyDb {
       ]);
       await this.db.execute('DELETE FROM reedy_book_chunks WHERE book_hash = ?', [bookHash]);
       await this.db.execute('DELETE FROM reedy_book_meta WHERE book_hash = ?', [bookHash]);
+      await this.db.execute('DELETE FROM reedy_learning_items WHERE book_hash = ?', [bookHash]);
     });
   }
 
@@ -263,6 +267,7 @@ export class ReedyDb {
       await this.db.execute('DROP TABLE IF EXISTS reedy_memory_embeddings');
       await this.db.execute('DELETE FROM reedy_book_chunks');
       await this.db.execute('DELETE FROM reedy_memory');
+      await this.db.execute('DELETE FROM reedy_learning_items');
     });
   }
 
@@ -457,6 +462,75 @@ export class ReedyDb {
     );
   }
 
+  async getChunksBySection(args: {
+    bookHash: string;
+    sectionIndex: number;
+    limit?: number;
+  }): Promise<ChunkRow[]> {
+    const limit = Math.max(1, Math.min(args.limit ?? 12, 100));
+    const rows = await this.db.select<ChunkRowSql>(
+      `SELECT id, book_hash, section_index, chapter_title,
+              start_cfi, end_cfi, position_index, text, token_count
+         FROM reedy_book_chunks
+        WHERE book_hash = ? AND section_index = ?
+        ORDER BY position_index ASC
+        LIMIT ?`,
+      [args.bookHash, args.sectionIndex, limit],
+    );
+    return rows.map(toChunkRow);
+  }
+
+  async saveLearningItem(args: LearningItemWriteArgs): Promise<LearningItemRow> {
+    const now = Date.now();
+    const row: LearningItemRow = {
+      id: randomLearningItemId(),
+      bookHash: args.bookHash,
+      type: args.type,
+      sourceText: args.sourceText,
+      sourceCfi: args.sourceCfi ?? null,
+      chapterTitle: args.chapterTitle ?? null,
+      explanation: args.explanation,
+      examples: args.examples ?? null,
+      reviewState: args.reviewState ?? 'new',
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await this.enqueue(() =>
+      this.db.execute(
+        `INSERT INTO reedy_learning_items
+           (id, book_hash, type, source_text, source_cfi, chapter_title, explanation, examples, review_state, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          row.id,
+          row.bookHash,
+          row.type,
+          row.sourceText,
+          row.sourceCfi,
+          row.chapterTitle,
+          row.explanation,
+          row.examples,
+          row.reviewState,
+          row.createdAt,
+          row.updatedAt,
+        ],
+      ),
+    );
+    return row;
+  }
+
+  async listLearningItems(bookHash: string, limit = 50): Promise<LearningItemRow[]> {
+    const safeLimit = Math.max(1, Math.min(limit, 200));
+    const rows = await this.db.select<LearningItemRowSql>(
+      `SELECT * FROM reedy_learning_items
+        WHERE book_hash = ?
+        ORDER BY updated_at DESC
+        LIMIT ?`,
+      [bookHash, safeLimit],
+    );
+    return rows.map(toLearningItemRow);
+  }
+
   private async getMemoryById(id: string): Promise<MemoryRow | null> {
     const rows = await this.db.select<MemoryRowSql>('SELECT * FROM reedy_memory WHERE id = ?', [
       id,
@@ -545,7 +619,20 @@ interface ScoredChunkRowSql {
   [key: string]: unknown;
 }
 
-function rowToChunk(row: ScoredChunkRowSql): Omit<ScoredChunk, 'score' | 'vectorRank' | 'ftsRank'> {
+interface ChunkRowSql {
+  id: string;
+  book_hash: string;
+  section_index: number;
+  chapter_title: string | null;
+  start_cfi: string;
+  end_cfi: string;
+  position_index: number;
+  text: string;
+  token_count: number;
+  [key: string]: unknown;
+}
+
+function toChunkRow(row: ChunkRowSql): ChunkRow {
   return {
     id: row.id,
     bookHash: row.book_hash,
@@ -557,6 +644,10 @@ function rowToChunk(row: ScoredChunkRowSql): Omit<ScoredChunk, 'score' | 'vector
     text: row.text,
     tokenCount: row.token_count,
   };
+}
+
+function rowToChunk(row: ScoredChunkRowSql): Omit<ScoredChunk, 'score' | 'vectorRank' | 'ftsRank'> {
+  return toChunkRow(row);
 }
 
 // RRF constant per the Cormack/Clarke/Buettcher paper; dampens single-path
@@ -642,7 +733,44 @@ function toMemoryRow(row: MemoryRowSql): MemoryRow {
   };
 }
 
+interface LearningItemRowSql {
+  id: string;
+  book_hash: string;
+  type: string;
+  source_text: string;
+  source_cfi: string | null;
+  chapter_title: string | null;
+  explanation: string;
+  examples: string | null;
+  review_state: string;
+  created_at: number;
+  updated_at: number;
+  [key: string]: unknown;
+}
+
+function toLearningItemRow(row: LearningItemRowSql): LearningItemRow {
+  return {
+    id: row.id,
+    bookHash: row.book_hash,
+    type: row.type as LearningItemType,
+    sourceText: row.source_text,
+    sourceCfi: row.source_cfi,
+    chapterTitle: row.chapter_title,
+    explanation: row.explanation,
+    examples: row.examples,
+    reviewState: row.review_state,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 function randomMemoryId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return `mem-${crypto.randomUUID()}`;
   return `mem-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function randomLearningItemId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
+    return `learning-${crypto.randomUUID()}`;
+  return `learning-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }

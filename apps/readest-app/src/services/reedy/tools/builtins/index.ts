@@ -7,8 +7,12 @@
 export { createGetReadingContextTool } from './getReadingContext';
 export { createGetSelectionTool } from './getSelection';
 export type { GetSelectionResult } from './getSelection';
+export { createGetCurrentChapterPassagesTool } from './getCurrentChapterPassages';
+export type { CurrentChapterPassagesResult } from './getCurrentChapterPassages';
 export { createLookupPassageTool } from './lookupPassage';
 export type { LookupPassageDeps, LookupPassageResult } from './lookupPassage';
+export { createListLearningItemsTool } from './listLearningItems';
+export type { ListLearningItemsResult } from './listLearningItems';
 export { createAddCitationTool } from './addCitation';
 export type { AddCitationResult } from './addCitation';
 export { createNavigateToCfiTool } from './navigateToCfi';
@@ -16,6 +20,8 @@ export { createCreateHighlightTool } from './createHighlight';
 export type { CreateHighlightResult } from './createHighlight';
 export { createCreateNoteTool } from './createNote';
 export type { CreateNoteResult } from './createNote';
+export { createSaveLearningItemTool } from './saveLearningItem';
+export type { SaveLearningItemResult } from './saveLearningItem';
 export {
   createSearchUserMemoryTool,
   createWriteUserMemoryTool,

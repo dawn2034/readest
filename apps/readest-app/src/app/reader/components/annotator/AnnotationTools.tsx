@@ -3,6 +3,7 @@ import { FiSearch } from 'react-icons/fi';
 import { FiCopy } from 'react-icons/fi';
 import { PiHighlighterFill } from 'react-icons/pi';
 import { BsPencilSquare } from 'react-icons/bs';
+import { BsStars } from 'react-icons/bs';
 import { BsTranslate } from 'react-icons/bs';
 import { TbHexagonLetterD } from 'react-icons/tb';
 import { FaHeadphones } from 'react-icons/fa6';
@@ -75,6 +76,12 @@ export const annotationToolButtons = createAnnotationToolButtons([
     tooltip: _('Translate text after selection'),
     Icon: BsTranslate,
     quickAction: true,
+  },
+  {
+    type: 'ai',
+    label: _('AI Coach'),
+    tooltip: _('Explain text with AI Coach after selection'),
+    Icon: BsStars,
   },
   {
     type: 'tts',

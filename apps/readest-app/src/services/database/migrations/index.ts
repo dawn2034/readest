@@ -153,6 +153,27 @@ const migrations: Record<SchemaType, MigrationEntry[]> = {
         );
       `,
     },
+    {
+      name: '2026053101_reedy_learning_items',
+      sql: `
+        CREATE TABLE IF NOT EXISTS reedy_learning_items (
+          id TEXT PRIMARY KEY,
+          book_hash TEXT NOT NULL,
+          type TEXT NOT NULL,
+          source_text TEXT NOT NULL,
+          source_cfi TEXT,
+          chapter_title TEXT,
+          explanation TEXT NOT NULL,
+          examples TEXT,
+          review_state TEXT NOT NULL DEFAULT 'new',
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_learning_items_book_updated
+        ON reedy_learning_items (book_hash, updated_at DESC);
+      `,
+    },
   ],
 };
 

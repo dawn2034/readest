@@ -136,6 +136,17 @@ describe('ReedyDb', () => {
       expect(rows.map((r) => r.text)).toEqual(chunks.map((c) => c.text));
     });
 
+    it('getChunksBySection returns chunks for the requested section only', async () => {
+      await reedy.insertChunks([
+        chunk('s0-c1', 'bk1', 0, 'first section'),
+        { ...chunk('s1-c1', 'bk1', 1, 'second section'), sectionIndex: 1 },
+      ]);
+
+      const rows = await reedy.getChunksBySection({ bookHash: 'bk1', sectionIndex: 1 });
+      expect(rows).toHaveLength(1);
+      expect(rows[0]!.text).toBe('second section');
+    });
+
     it('insertEmbeddings writes vectors that round-trip via vector_extract', async () => {
       await reedy.insertChunks([chunk('c1', 'bk1', 0, 'alpha')]);
       const emb: EmbeddingRow = {
@@ -294,6 +305,36 @@ describe('ReedyDb', () => {
         spoilerBoundPosition: 1,
       });
       for (const r of res) expect(r.positionIndex).toBeLessThanOrEqual(1);
+    });
+  });
+
+  describe('learning items', () => {
+    it('saves and lists contextual learning items by book', async () => {
+      const item = await reedy.saveLearningItem({
+        bookHash: 'bookA',
+        type: 'vocabulary',
+        sourceText: 'settle',
+        sourceCfi: 'epubcfi(/6/2!/4/2)',
+        chapterTitle: 'Chapter 1',
+        explanation: 'Means to accept or resolve something in this context.',
+        examples: 'settle a dispute',
+      });
+      await reedy.saveLearningItem({
+        bookHash: 'bookB',
+        type: 'phrase',
+        sourceText: 'move on',
+        explanation: 'Continue after something difficult.',
+      });
+
+      const rows = await reedy.listLearningItems('bookA');
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        id: item.id,
+        bookHash: 'bookA',
+        type: 'vocabulary',
+        sourceText: 'settle',
+        chapterTitle: 'Chapter 1',
+      });
     });
   });
 });

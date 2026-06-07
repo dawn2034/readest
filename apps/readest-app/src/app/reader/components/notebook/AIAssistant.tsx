@@ -13,6 +13,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useBookDataStore } from '@/store/bookDataStore';
 import { useReaderStore } from '@/store/readerStore';
+import { useNotebookStore } from '@/store/notebookStore';
 import { useAIChatStore } from '@/store/aiChatStore';
 import { aiLogger, createTauriAdapter } from '@/services/ai';
 import {
@@ -478,6 +479,7 @@ const ReedyAgentAssistantBridge = ({ bookKey }: AIAssistantProps) => {
   const { settings } = useSettingsStore();
   const { getBookData } = useBookDataStore();
   const { getProgress, getView } = useReaderStore();
+  const { notebookAISelection, notebookAIPrompt, setNotebookAIPrompt } = useNotebookStore();
   const bookData = getBookData(bookKey);
   const progress = getProgress(bookKey);
 
@@ -490,8 +492,15 @@ const ReedyAgentAssistantBridge = ({ bookKey }: AIAssistantProps) => {
       sectionIndex: progress?.section?.current ?? 0,
       chapterTitle: progress?.sectionLabel ?? null,
       pageNumber: progress?.pageinfo?.current ?? 0,
+      selection: notebookAISelection
+        ? {
+            text: notebookAISelection.text,
+            startCfi: notebookAISelection.cfi ?? progress?.location ?? '',
+            endCfi: notebookAISelection.cfi ?? progress?.location ?? '',
+          }
+        : undefined,
     }),
-    [progress],
+    [progress, notebookAISelection],
   );
 
   const handleNavigate = useCallback(
@@ -511,6 +520,8 @@ const ReedyAgentAssistantBridge = ({ bookKey }: AIAssistantProps) => {
       bookKey={bookKey}
       aiSettings={aiSettings}
       readingContext={readingContext}
+      initialPrompt={notebookAIPrompt ?? undefined}
+      onInitialPromptConsumed={() => setNotebookAIPrompt(null)}
       onNavigateToCfi={handleNavigate}
     />
   );

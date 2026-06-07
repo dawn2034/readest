@@ -87,7 +87,13 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
   const { isDarkMode } = useThemeStore();
   const { getConfig, saveConfig, getBookData, updateBooknotes } = useBookDataStore();
   const { getProgress, getView, getViewsById, getViewSettings } = useReaderStore();
-  const { setNotebookVisible, setNotebookNewAnnotation } = useNotebookStore();
+  const {
+    setNotebookVisible,
+    setNotebookActiveTab,
+    setNotebookNewAnnotation,
+    setNotebookAISelection,
+    setNotebookAIPrompt,
+  } = useNotebookStore();
   const { clearBooknotesNav } = useSidebarStore();
   const { listenToNativeTouchEvents } = useDeviceControlStore();
   const { loadCustomDictionaries } = useCustomDictionaryStore();
@@ -960,6 +966,32 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
     setShowDeepLPopup(true);
   };
 
+  const handleAIExplain = () => {
+    if (!selection || !selection.text) return;
+
+    if (!settings.aiSettings?.enabled) {
+      eventDispatcher.dispatch('toast', {
+        type: 'info',
+        message: _('Enable AI in Settings'),
+        timeout: 2500,
+      });
+      setSettingsDialogBookKey(bookKey);
+      setActiveSettingsItemId('settings.ai');
+      setSettingsDialogOpen(true);
+      return;
+    }
+
+    const cfi = selection.cfi || view?.getCFI(selection.index, selection.range);
+    const selectedText = selection.text.trim();
+    setNotebookAISelection(cfi ? { ...selection, cfi } : selection);
+    setNotebookAIPrompt(
+      `Explain this selected passage for an English learner. Use exactly these sections: Hint, Explain, Sentence X-ray, Translate. Keep Hint short and do not translate until the Translate section.\n\nSelected passage:\n"""${selectedText}"""`,
+    );
+    setNotebookVisible(true);
+    setNotebookActiveTab('ai');
+    handleDismissPopup();
+  };
+
   const handleSpeakText = async (oneTime = false) => {
     if (!selection || !selection.text) return;
     setShowAnnotPopup(false);
@@ -1326,6 +1358,8 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
         return { tooltipText: _(label), Icon, onClick: handleDictionary };
       case 'translate':
         return { tooltipText: _(label), Icon, onClick: handleTranslation };
+      case 'ai':
+        return { tooltipText: _(label), Icon, onClick: handleAIExplain };
       case 'tts':
         return {
           tooltipText: _(label),

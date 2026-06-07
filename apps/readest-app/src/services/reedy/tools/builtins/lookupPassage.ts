@@ -26,6 +26,7 @@ export interface LookupPassageDeps {
   bookHash: string;
   retriever: BookRetriever;
   activeEmbeddingModel: EmbeddingModel;
+  spoilerBoundPosition?: () => number | undefined;
 }
 
 export interface LookupPassageResult {
@@ -56,7 +57,7 @@ export function createLookupPassageTool(
         bookHash: deps.bookHash,
         query: parsed.query,
         k: parsed.topK,
-        spoilerBoundPosition: parsed.spoilerBoundPosition,
+        spoilerBoundPosition: parsed.spoilerBoundPosition ?? deps.spoilerBoundPosition?.(),
         activeEmbeddingModel: deps.activeEmbeddingModel,
       });
       return {

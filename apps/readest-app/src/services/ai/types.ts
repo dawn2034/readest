@@ -37,6 +37,12 @@ export interface AISettings {
   spoilerProtection: boolean;
   maxContextChunks: number;
   indexingMode: 'on-demand' | 'background';
+  englishCoach?: {
+    enabled: boolean;
+    nativeLanguage: string;
+    cefrLevel: 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+    defaultMode: 'quiet' | 'socratic' | 'exam' | 'vocabulary';
+  };
 
   /**
    * Reedy MVP retrieval (Turso vector + Tantivy FTS + CFI citations).

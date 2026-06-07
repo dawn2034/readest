@@ -11,6 +11,8 @@ interface NotebookState {
   notebookActiveTab: NotebookTab;
   notebookNewAnnotation: TextSelection | null;
   notebookEditAnnotation: BookNote | null;
+  notebookAISelection: TextSelection | null;
+  notebookAIPrompt: string | null;
   notebookAnnotationDrafts: { [key: string]: string };
   getIsNotebookVisible: () => boolean;
   toggleNotebook: () => void;
@@ -22,6 +24,8 @@ interface NotebookState {
   setNotebookActiveTab: (tab: NotebookTab) => void;
   setNotebookNewAnnotation: (selection: TextSelection | null) => void;
   setNotebookEditAnnotation: (note: BookNote | null) => void;
+  setNotebookAISelection: (selection: TextSelection | null) => void;
+  setNotebookAIPrompt: (prompt: string | null) => void;
   saveNotebookAnnotationDraft: (key: string, note: string) => void;
   getNotebookAnnotationDraft: (key: string) => string | undefined;
 }
@@ -33,6 +37,8 @@ export const useNotebookStore = create<NotebookState>((set, get) => ({
   notebookActiveTab: 'notes',
   notebookNewAnnotation: null,
   notebookEditAnnotation: null,
+  notebookAISelection: null,
+  notebookAIPrompt: null,
   notebookAnnotationDrafts: {},
   getIsNotebookVisible: () => get().isNotebookVisible,
   getNotebookWidth: () => get().notebookWidth,
@@ -45,6 +51,9 @@ export const useNotebookStore = create<NotebookState>((set, get) => ({
   setNotebookNewAnnotation: (selection: TextSelection | null) =>
     set({ notebookNewAnnotation: selection }),
   setNotebookEditAnnotation: (note: BookNote | null) => set({ notebookEditAnnotation: note }),
+  setNotebookAISelection: (selection: TextSelection | null) =>
+    set({ notebookAISelection: selection }),
+  setNotebookAIPrompt: (prompt: string | null) => set({ notebookAIPrompt: prompt }),
   saveNotebookAnnotationDraft: (key: string, note: string) =>
     set((state) => ({
       notebookAnnotationDrafts: { ...state.notebookAnnotationDrafts, [key]: note },

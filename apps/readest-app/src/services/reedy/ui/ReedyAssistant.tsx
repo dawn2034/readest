@@ -12,9 +12,12 @@ import { createReedyModels } from '../models/registry';
 import { ToolRegistry } from '../tools/ToolRegistry';
 import {
   createAddCitationTool,
+  createGetCurrentChapterPassagesTool,
   createGetReadingContextTool,
   createGetSelectionTool,
+  createListLearningItemsTool,
   createLookupPassageTool,
+  createSaveLearningItemTool,
   createSearchBookMemoryTool,
   createSearchSessionMemoryTool,
   createSearchUserMemoryTool,
@@ -30,7 +33,6 @@ import {
   createSkillLayer,
   createToolCatalogLayer,
   createUserMemoryLayer,
-  type SkillInstructions,
 } from '../context';
 import { MemoryService } from '../memory/MemoryService';
 import { MemoryConsolidator } from '../memory/MemoryConsolidator';
@@ -50,6 +52,8 @@ export interface ReedyAssistantProps {
   bookKey: string;
   aiSettings: AISettings;
   readingContext: ReadingContextSnapshot;
+  initialPrompt?: string;
+  onInitialPromptConsumed?: () => void;
   /** Stable id for the current user (used as the scope_key for user memory). */
   userId?: string;
   /** Wired by the notebook to `getView(bookKey)?.goTo(cfi)` on click. */
@@ -71,6 +75,8 @@ export function ReedyAssistant({
   bookHash,
   aiSettings,
   readingContext,
+  initialPrompt,
+  onInitialPromptConsumed,
   userId = 'local',
   onNavigateToCfi,
 }: ReedyAssistantProps) {
@@ -133,17 +139,6 @@ export function ReedyAssistant({
     readingRef.current = readingContext;
   }, [readingContext]);
 
-  // Active-skill state is read via a ref inside the SkillLayer's
-  // resolution so the runtime memo doesn't have to rebuild on every
-  // chip click. The layer captures the closure once; the closure peeks
-  // at the ref at prompt-build time.
-  const activeSkillRef = useRef<SkillInstructions | null>(null);
-  useEffect(() => {
-    activeSkillRef.current = activeSkill
-      ? { id: activeSkill.id, instructions: activeSkill.instructions }
-      : null;
-  }, [activeSkill]);
-
   // Live memory snapshots fed into BookMemoryLayer / UserMemoryLayer.
   // Refs (not state) because the prompt builder reads them synchronously
   // at runTurn time and we don't want every memory refresh to invalidate
@@ -182,6 +177,14 @@ export function ReedyAssistant({
         bookHash,
         retriever: reedy.retriever,
         activeEmbeddingModel: models.embedding,
+        spoilerBoundPosition: () =>
+          aiSettings.spoilerProtection ? readingRef.current.pageNumber : undefined,
+      }),
+    );
+    reg.register(
+      createGetCurrentChapterPassagesTool({
+        reedy: reedy.db,
+        readingContext: () => readingRef.current,
       }),
     );
     reg.register(
@@ -203,15 +206,23 @@ export function ReedyAssistant({
     reg.register(
       createSearchSessionMemoryTool({ service: reedy.memory, scopeKey: () => bookHash }),
     );
+    reg.register(
+      createSaveLearningItemTool({
+        save: (args) => reedy.db.saveLearningItem({ ...args, bookHash }),
+        readingContext: () => readingRef.current,
+      }),
+    );
+    reg.register(
+      createListLearningItemsTool({
+        list: (limit) => reedy.db.listLearningItems(bookHash, limit),
+      }),
+    );
 
     const layers = [
       createPolicyLayer(DEFAULT_POLICY),
-      // Use a tiny wrapper so the SkillLayer resolves the *current*
-      // active skill each time the runtime rebuilds the prompt.
-      ((): ReturnType<typeof createSkillLayer> => {
-        const snapshot = activeSkillRef.current;
-        return createSkillLayer(snapshot);
-      })(),
+      createSkillLayer(
+        activeSkill ? { id: activeSkill.id, instructions: activeSkill.instructions } : null,
+      ),
       createReadingLayer(readingRef.current),
       createToolCatalogLayer(reg.list()),
       createBookMemoryLayer(() => bookMemorySnapshotRef.current),
@@ -219,7 +230,7 @@ export function ReedyAssistant({
     ];
 
     return new AgentRuntime({ model: models.chat, tools: reg, layers });
-  }, [reedy, models.chat, models.embedding, bookHash, userId]);
+  }, [reedy, models.chat, models.embedding, bookHash, userId, activeSkill, aiSettings]);
 
   const messages = useReedyStore((s) => s.messages);
   const isRunning = useReedyStore((s) => s.isRunning);
@@ -332,6 +343,15 @@ export function ReedyAssistant({
     },
     [runtime, send, bookHash, activeSkill],
   );
+
+  const consumedInitialPromptRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!initialPrompt || !runtime || indexingPhase !== 'indexed' || isRunning) return;
+    if (consumedInitialPromptRef.current === initialPrompt) return;
+    consumedInitialPromptRef.current = initialPrompt;
+    handleSend(initialPrompt);
+    onInitialPromptConsumed?.();
+  }, [initialPrompt, runtime, indexingPhase, isRunning, handleSend, onInitialPromptConsumed]);
 
   if (!aiSettings.enabled) {
     return (

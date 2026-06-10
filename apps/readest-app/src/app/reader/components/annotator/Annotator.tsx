@@ -45,6 +45,7 @@ import {
 import { runSimpleCC } from '@/utils/simplecc';
 import { getWordCount } from '@/utils/word';
 import { getIndexFromCfi, isCfiInLocation } from '@/utils/cfi';
+import { writeTextToClipboard } from '@/utils/clipboard';
 import { TransformContext } from '@/services/transformers/types';
 import { transformContent } from '@/services/transformService';
 import {
@@ -735,9 +736,10 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
 
   const handleCopy = (dismissPopup = true) => {
     if (!selection || !selection.text) return;
+    const textToCopy = selection.text;
     setTimeout(() => {
       // Delay to ensure it won't be overridden by system clipboard actions
-      navigator.clipboard?.writeText(selection.text);
+      void writeTextToClipboard(textToCopy);
     }, 100);
     if (dismissPopup) {
       handleDismissPopupAndSelection();
@@ -1240,7 +1242,7 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
 
     setTimeout(() => {
       // Delay to ensure it won't be overridden by system clipboard actions
-      navigator.clipboard?.writeText(content);
+      void writeTextToClipboard(content);
     }, 100);
 
     const ext = isPlainText ? 'txt' : 'md';

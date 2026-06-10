@@ -77,7 +77,7 @@ export abstract class BaseAppService implements AppService {
   abstract selectFiles(name: string, extensions: string[]): Promise<string[]>;
   abstract saveFile(
     filename: string,
-    content: string | ArrayBuffer,
+    content: string | ArrayBuffer | null,
     options?: {
       filePath?: string;
       mimeType?: string;
@@ -387,6 +387,10 @@ export abstract class BaseAppService implements AppService {
 
   async loadBookContent(book: Book): Promise<BookContent> {
     return BookSvc.loadBookContent(this.fs, book);
+  }
+
+  async resolveNativeBookFilePath(book: Book): Promise<string | null> {
+    return BookSvc.resolveNativeBookFilePath(this.fs, this.resolveFilePath.bind(this), book);
   }
 
   async loadBookConfig(book: Book, settings: SystemSettings): Promise<BookConfig> {
